@@ -11,5 +11,8 @@
   "dependencies": {
     "babylonjs": "^3.3.0",
     "tsc": "^1.20150623.0"
+  },
+  "devDependencies": {
+    "@types/babylonjs": "^2.4.1"
   }
 }
