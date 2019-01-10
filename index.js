@@ -6,6 +6,7 @@ import {
   HemisphericLight,
   MeshBuilder,
   Vector3,
+  Matrix,
   Color3,
   StandardMaterial
 } from "./node_modules/babylonjs/es6.js";
@@ -28,11 +29,14 @@ camera.attachControl(canvas, true);
 
 const light = new HemisphericLight("light", new Vector3(1, 1, 0), scene);
 
+const height = 2;
 const trunk = new MeshBuilder.CreateCylinder(
   "trunk",
-  { height: 2, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 5 },
+  { height, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 5 },
   scene
 );
+// offset by y so that the trunk's base is centered at its local origin
+trunk.bakeTransformIntoVertices(Matrix.Translation(0, 0.5 * height, 0));
 
 const ground = new MeshBuilder.CreateGround(
   "ground",
@@ -44,7 +48,6 @@ const ground = new MeshBuilder.CreateGround(
   scene
 );
 
-trunk.position = new Vector3(0, 0.5, 0);
 const material = new StandardMaterial("trunkMaterial", scene);
 material.diffuseColor = new Color3(0.6, 0.6, 0.6);
 material.specularColor = new Color3(0.1, 0.1, 0.1);
