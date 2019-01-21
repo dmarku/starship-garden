@@ -1,4 +1,3 @@
-console.log("hi there");
 import {
   Engine,
   Scene,
@@ -8,29 +7,31 @@ import {
   Vector3,
   Matrix,
   Color3,
-  StandardMaterial
-} from "./node_modules/babylonjs/es6.js";
+  StandardMaterial,
+  Color4
+} from "babylonjs";
 
-const canvas = document.getElementById("scene");
+const canvas = document.getElementById("scene") as HTMLCanvasElement;
 
 const engine = new Engine(canvas, true);
 
 const scene = new Scene(engine);
-scene.clearColor = new Color3(1, 0.8, 0.2);
+scene.clearColor = new Color4(1, 0.8, 0.2, 1);
 
 const camera = new ArcRotateCamera(
   "cam",
   Math.PI / 2,
   Math.PI / 2,
   2,
-  Vector3.Zero()
+  Vector3.Zero(),
+  scene
 );
 camera.attachControl(canvas, true);
 
 const light = new HemisphericLight("light", new Vector3(1, 1, 0), scene);
 
 const height = 2;
-const trunk = new MeshBuilder.CreateCylinder(
+const trunk = MeshBuilder.CreateCylinder(
   "trunk",
   { height, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 5 },
   scene
@@ -38,13 +39,9 @@ const trunk = new MeshBuilder.CreateCylinder(
 // offset by y so that the trunk's base is centered at its local origin
 trunk.bakeTransformIntoVertices(Matrix.Translation(0, 0.5 * height, 0));
 
-const ground = new MeshBuilder.CreateGround(
+const ground = MeshBuilder.CreateGround(
   "ground",
-  {
-    width: 12,
-    height: 12,
-    subdivisions: 3
-  },
+  { width: 12, height: 12, subdivisions: 3 },
   scene
 );
 
