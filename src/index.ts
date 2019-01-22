@@ -10,6 +10,7 @@ import {
   StandardMaterial,
   Color4
 } from "@babylonjs/core";
+//} from "babylonjs";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 
