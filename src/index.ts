@@ -20,9 +20,9 @@ scene.clearColor = Color4.FromHexString("#8baff3ff");
 
 const camera = new ArcRotateCamera(
   "cam",
-  Math.PI / 2,
-  Math.PI / 2,
-  2,
+  0,
+  0.32 * Math.PI,
+  30,
   Vector3.Zero(),
   scene
 );
@@ -56,4 +56,8 @@ trunk.material = material;
 
 engine.runRenderLoop(() => {
   scene.render();
+});
+
+camera.onViewMatrixChangedObservable.add(cam => {
+  console.log(`POS: ${camera.globalPosition};  ROT: ${camera.rotation}`);
 });
