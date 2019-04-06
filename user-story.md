@@ -29,3 +29,12 @@
 - change crown size (=leave richness) to control amplitude
 - not sure about growth process model yet (watering and nutrition)
 - adjust global lighting conditions to change "master volume"
+
+## Feedback Lena
+
+- no more than three minutes to see an effect,
+  maybe immediate feedback like lit response
+- water & nutrient to accelerate growth
+- energy model for volume, light -> leaves -> energy -> amplitude (photo*synthesis*)
+- nutrient for strength & branching
+- water for size & leave/crown richness

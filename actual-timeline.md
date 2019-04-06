@@ -7,3 +7,18 @@
 - Got Babylon working with NPM, Typescript is WIP, currently module resolution doesn't work
 
 - drafted user story (heavily WIP)
+
+# 15.01. - 23.01.
+
+- got Typescript & Webpack working; had to switch to Babel 4 Alpha, ditch Fuse-Box as it didn't bundle external dependencies
+- adjust colors and camera position
+
+# TODO
+
+- cause & effect of tools
+  - initial state
+    - thresholds for
+  - which tool influences which parameter
+  - parameter -> sound & appearance
+  - immediate feedback of interaction - water wets plant or ground - nutrient lights up???
+    :

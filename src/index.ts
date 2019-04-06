@@ -10,7 +10,10 @@ import {
   StandardMaterial,
   Color4,
   PointerDragBehavior,
-  TransformNode
+  TransformNode,
+  ActionManager,
+  ExecuteCodeAction,
+  Action
 } from "@babylonjs/core";
 
 // NOTE TO SELF: y-axis is up!
@@ -112,6 +115,19 @@ trunkSizeHandle.material = handleMaterial;
   handleBehavior.useObjectOrienationForDragging = false;
   handleBehavior.attach(trunkSizeHandle);
 })();
+
+let placeSeed = false;
+
+scene.actionManager = new ActionManager(scene);
+scene.actionManager.registerAction(
+  new ExecuteCodeAction(
+    { trigger: ActionManager.OnKeyUpTrigger, parameter: "s" },
+    () => {
+      placeSeed = true;
+      console.log("start placing seeds");
+    }
+  )
+);
 
 engine.runRenderLoop(() => {
   scene.render();
