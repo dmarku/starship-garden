@@ -12,8 +12,7 @@ import {
   PointerDragBehavior,
   TransformNode,
   ActionManager,
-  ExecuteCodeAction,
-  Action
+  ExecuteCodeAction
 } from "@babylonjs/core";
 
 // NOTE TO SELF: y-axis is up!
@@ -51,49 +50,50 @@ const treeMaterial = new StandardMaterial("trunkMaterial", scene);
 treeMaterial.diffuseColor = Color3.FromHexString("#38d051");
 treeMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
 
-// this is the tree's "root" in the sense of scene hierarchy, not biology
-const root = new TransformNode("tree");
-
-const height = 2;
-const trunk = MeshBuilder.CreateCylinder(
-  "trunk",
-  { height, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 12 },
-  scene
-);
-// offset by y so that the trunk's base is centered at its local origin
-trunk.bakeTransformIntoVertices(Matrix.Translation(0, 0.5 * height, 0));
-trunk.material = treeMaterial;
-trunk.parent = root;
-
-const crown = MeshBuilder.CreateSphere("crown", { diameter: 2.5 }, scene);
-crown.parent = root;
-// center = trunk height + crown radiussessions
-crown.position.y = 2 + 1.25;
-crown.material = treeMaterial;
-
 const handleMaterial = new StandardMaterial("handleMaterial", scene);
 handleMaterial.diffuseColor = new Color3(1, 1, 1);
 
-const trunkSizeDonut = MeshBuilder.CreateTorus(
-  "trunk size donut",
-  { diameter: 2, thickness: 0.3 },
-  scene
-);
-trunkSizeDonut.position.y = 0.5 * height;
-trunkSizeDonut.material = handleMaterial;
-trunkSizeDonut.parent = root;
+function createTree(scene: Scene) {
+  // this is the tree's "root" in the sense of scene hierarchy, not biology
+  const root = new TransformNode("tree", scene);
 
-const trunkSizeHandle = MeshBuilder.CreateSphere(
-  "trunk size handle",
-  { diameter: 1, segments: 4 },
-  scene
-);
-trunkSizeHandle.position.y = 0.5 * height;
-trunkSizeHandle.position.x = 1;
-trunkSizeHandle.parent = root;
-trunkSizeHandle.material = handleMaterial;
+  const height = 2;
 
-(() => {
+  const trunk = MeshBuilder.CreateCylinder(
+    "trunk",
+    { height, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 12 },
+    scene
+  );
+  // offset by y so that the trunk's base is centered at its local origin
+  trunk.bakeTransformIntoVertices(Matrix.Translation(0, 0.5 * height, 0));
+  trunk.material = treeMaterial;
+  trunk.parent = root;
+
+  const crown = MeshBuilder.CreateSphere("crown", { diameter: 2.5 }, scene);
+  // center = trunk height + crown radius
+  crown.position.y = 2 + 1.25;
+  crown.material = treeMaterial;
+  crown.parent = trunk;
+
+  const trunkSizeDonut = MeshBuilder.CreateTorus(
+    "trunk size donut",
+    { diameter: 2, thickness: 0.3 },
+    scene
+  );
+  trunkSizeDonut.position.y = 0.5 * height;
+  trunkSizeDonut.material = handleMaterial;
+  trunkSizeDonut.parent = root;
+
+  const trunkSizeHandle = MeshBuilder.CreateSphere(
+    "trunk size handle",
+    { diameter: 1, segments: 4 },
+    scene
+  );
+  trunkSizeHandle.position.y = 0.5 * height;
+  trunkSizeHandle.position.x = 1;
+  trunkSizeHandle.material = handleMaterial;
+  trunkSizeHandle.parent = root;
+
   let origin = trunkSizeDonut.position;
   let startScale: Vector3;
   let startDistance: number;
@@ -114,7 +114,12 @@ trunkSizeHandle.material = handleMaterial;
 
   handleBehavior.useObjectOrienationForDragging = false;
   handleBehavior.attach(trunkSizeHandle);
-})();
+
+  return root;
+}
+
+const trees = [createTree(scene), createTree(scene)];
+trees[1].position.addInPlace(new Vector3(0.5, 0, 3));
 
 let placeSeed = false;
 
