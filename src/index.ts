@@ -53,7 +53,11 @@ treeMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
 const handleMaterial = new StandardMaterial("handleMaterial", scene);
 handleMaterial.diffuseColor = new Color3(1, 1, 1);
 
-function createTree(scene: Scene) {
+interface TreeOptions {
+  position?: Vector3;
+}
+
+function createTree(options: TreeOptions, scene: Scene) {
   // this is the tree's "root" in the sense of scene hierarchy, not biology
   const root = new TransformNode("tree", scene);
 
@@ -115,23 +119,49 @@ function createTree(scene: Scene) {
   handleBehavior.useObjectOrienationForDragging = false;
   handleBehavior.attach(trunkSizeHandle);
 
+  root.position = options.position || Vector3.Zero();
   return root;
 }
 
-const trees = [createTree(scene), createTree(scene)];
-trees[1].position.addInPlace(new Vector3(0.5, 0, 3));
+const trees = [
+  createTree({ position: new Vector3(0, 0, 0) }, scene),
+  createTree({ position: new Vector3(0.5, 0, 3) }, scene)
+];
 
-let placeSeed = false;
+type Tool = null | "Seed Placement";
+let tool: Tool = null;
 
 scene.actionManager = new ActionManager(scene);
 scene.actionManager.registerAction(
   new ExecuteCodeAction(
     { trigger: ActionManager.OnKeyUpTrigger, parameter: "s" },
     () => {
-      placeSeed = true;
-      console.log("start placing seeds");
+      if (tool !== "Seed Placement") {
+        tool = "Seed Placement";
+        console.log("seeding tool selected");
+      } else {
+        tool = null;
+        console.log("no tool selected");
+      }
     }
   )
+);
+
+ground.actionManager = new ActionManager(scene);
+ground.actionManager.registerAction(
+  new ExecuteCodeAction({ trigger: ActionManager.OnPickUpTrigger }, () => {
+    if (tool === "Seed Placement") {
+      const result = scene.pick(
+        scene.pointerX,
+        scene.pointerY,
+        mesh => mesh === ground
+      );
+      if (result && result.hit) {
+        createTree({ position: result.pickedPoint || Vector3.Zero() }, scene);
+        console.log("seed placed");
+      }
+    }
+  })
 );
 
 engine.runRenderLoop(() => {
