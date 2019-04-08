@@ -33,7 +33,7 @@ const camera = new ArcRotateCamera(
   Vector3.Zero(),
   scene
 );
-camera.attachControl(canvas, true);
+//camera.attachControl(canvas, true);
 
 const light = new HemisphericLight("light", new Vector3(1, 1, 0), scene);
 
