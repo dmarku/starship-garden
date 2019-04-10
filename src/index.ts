@@ -99,15 +99,6 @@ function createTree(
   crown.material = treeMaterial;
   crown.parent = trunk;
 
-  const trunkSizeDonut = MeshBuilder.CreateTorus(
-    "trunk size donut",
-    { diameter: 2, thickness: 0.3 },
-    scene
-  );
-  trunkSizeDonut.position.y = 0.5 * height;
-  trunkSizeDonut.material = handleMaterial;
-  trunkSizeDonut.parent = root;
-
   const trunkSizeHandle = MeshBuilder.CreateSphere(
     "trunk size handle",
     { diameter: 1, segments: 4 },
@@ -185,7 +176,7 @@ function createTree(
     envelopeFrequency.offset.value = getEnvelopeFrequency(data.size);
   });
 
-  handleBehavior.onDragEndObservable.add(event => {
+  handleBehavior.onDragEndObservable.add(() => {
     save();
   });
 
@@ -196,7 +187,7 @@ function createTree(
     ? new Vector3(options.position.x, options.position.y, options.position.z)
     : Vector3.Zero();
   origin = Vector3.TransformCoordinates(
-    trunkSizeDonut.position,
+    new Vector3(0, 1, 0),
     root.getWorldMatrix()
   );
   // placeholder for audio props
