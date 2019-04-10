@@ -129,7 +129,7 @@ function createTree(
 
     // map exponentially [0, 1] -> [0, 1]
     const factor = (Math.exp(s) - 1) / (Math.E - 1);
-    return factor * 880 + (1 - factor) * 220;
+    return factor * 1046.5 /* C6 */ + (1 - factor) * 32.7 /* C1 */;
   }
 
   let origin: Vector3;
@@ -150,7 +150,7 @@ function createTree(
     const scaling = distance / startDistance;
 
     trunk.scaling = startScale.scale(scaling);
-    frequency.offset.value = getFrequency(scaling);
+    frequency.offset.value = getFrequency(trunk.scaling.x);
   });
 
   handleBehavior.useObjectOrienationForDragging = false;
