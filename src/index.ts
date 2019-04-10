@@ -268,7 +268,7 @@ function defaultScene(): Tree[] {
   ];
 }
 
-type Tool = null | "Seed Placement";
+type Tool = null | "Seed Placement" | "Tree Remover";
 let tool: Tool = null;
 
 scene.actionManager = new ActionManager(scene);
@@ -279,6 +279,21 @@ scene.actionManager.registerAction(
       if (tool !== "Seed Placement") {
         tool = "Seed Placement";
         console.log("seeding tool selected");
+      } else {
+        tool = null;
+        console.log("no tool selected");
+      }
+    }
+  )
+);
+
+scene.actionManager.registerAction(
+  new ExecuteCodeAction(
+    { trigger: ActionManager.OnKeyUpTrigger, parameter: "d" },
+    () => {
+      if (tool !== "Tree Remover") {
+        tool = "Tree Remover";
+        console.log("remover selected");
       } else {
         tool = null;
         console.log("no tool selected");
@@ -298,11 +313,11 @@ ground.actionManager.registerAction(
       );
       if (result && result.hit) {
         trees.push(
-        createTree(
-          { position: result.pickedPoint || Vector3.Zero() },
-          scene,
-          ctx,
-          master
+          createTree(
+            { position: result.pickedPoint || Vector3.Zero() },
+            scene,
+            ctx,
+            master
           )
         );
         console.log("seed placed");
@@ -319,11 +334,11 @@ engine.runRenderLoop(() => {
 });
 
 function onVisibilityChange() {
-if (document.hidden) {
-  ctx.suspend();
-} else {
-  ctx.resume();
-}
+  if (document.hidden) {
+    ctx.suspend();
+  } else {
+    ctx.resume();
+  }
 }
 
 document.addEventListener("visibilitychange", onVisibilityChange);
