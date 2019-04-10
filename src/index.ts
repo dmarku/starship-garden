@@ -117,9 +117,20 @@ function createTree(
   carrier.start();
   carrier.connect(output);
 
-  const frequency = new ConstantSourceNode(ctx, { offset: 391 });
+  const frequency = new ConstantSourceNode(ctx, { offset: getFrequency(1) });
   frequency.start();
   frequency.connect(carrier.frequency);
+
+  function getFrequency(scale: number): number {
+    // let's assume reasonable scaling factors go from 0.1 to 10
+    // set frequencies between 220 and 880 hertz (so that two orders of magnitude ~ two octaves)
+    // map [0.1, 10] -> [0, 1]
+    const s = (10 - scale) / (10 - 0.1);
+
+    // map exponentially [0, 1] -> [0, 1]
+    const factor = (Math.exp(s) - 1) / (Math.E - 1);
+    return factor * 880 + (1 - factor) * 220;
+  }
 
   let origin: Vector3;
   let startScale: Vector3;
@@ -139,14 +150,7 @@ function createTree(
     const scaling = distance / startDistance;
 
     trunk.scaling = startScale.scale(scaling);
-
-    // let's assume reasonable scaling factors go from 0.1 to 10
-    // set frequencies at
-    // map [0.1, 10] -> [0, 1]
-    const s = (10 - scaling) / (10 - 0.1);
-    // map exponentially [0, 1] -> [0, 1]
-    const factor = (Math.exp(s) - 1) / (Math.E - 1);
-    frequency.offset.value = factor * 880 + (1 - factor) * 220;
+    frequency.offset.value = getFrequency(scaling);
   });
 
   handleBehavior.useObjectOrienationForDragging = false;
