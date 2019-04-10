@@ -131,7 +131,7 @@ function createTree(
   carrierFrequency.connect(carrier.frequency);
 
   const envelopeFrequency = new ConstantSourceNode(ctx, {
-    offset: 1 / 7
+    offset: getEnvelopeFrequency(1)
   });
   envelopeFrequency.start();
   envelopeFrequency.connect(envOsc.frequency);
@@ -145,6 +145,13 @@ function createTree(
     // map exponentially [0, 1] -> [0, 1]
     const factor = (Math.exp(s) - 1) / (Math.E - 1);
     return factor * 1046.5 /* C6 */ + (1 - factor) * 32.7 /* C1 */;
+  }
+
+  function getEnvelopeFrequency(scale: number): number {
+    // for explanation, see `getFrequency()`
+    const s = (10 - scale) / (10 - 0.1);
+    const factor = (Math.exp(s) - 1) / (Math.E - 1);
+    return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
   }
 
   let origin: Vector3;
@@ -166,6 +173,7 @@ function createTree(
 
     trunk.scaling = startScale.scale(scaling);
     carrierFrequency.offset.value = getFrequency(trunk.scaling.x);
+    envelopeFrequency.offset.value = getEnvelopeFrequency(trunk.scaling.x);
   });
 
   handleBehavior.useObjectOrienationForDragging = false;
