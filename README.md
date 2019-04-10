@@ -1,5 +1,8 @@
 # Starship Garden
+
 Orientation Project for Winter Term 2018/19
+
+![Screenshot](./screenshot.png)
 
 ## Setup
 
