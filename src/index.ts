@@ -325,6 +325,20 @@ engine.runRenderLoop(() => {
   scene.render();
 });
 
+if (document.hidden) {
+  ctx.suspend();
+} else {
+  ctx.resume();
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    ctx.suspend();
+  } else {
+    ctx.resume();
+  }
+});
+
 //audio_v1(ctx);
 //audio_v2(ctx);
 
