@@ -327,19 +327,16 @@ engine.runRenderLoop(() => {
   scene.render();
 });
 
+function onVisibilityChange() {
 if (document.hidden) {
   ctx.suspend();
 } else {
   ctx.resume();
 }
+}
 
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    ctx.suspend();
-  } else {
-    ctx.resume();
-  }
-});
+document.addEventListener("visibilitychange", onVisibilityChange);
+onVisibilityChange();
 
 //audio_v1(ctx);
 //audio_v2(ctx);
