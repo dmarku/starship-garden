@@ -219,14 +219,13 @@ master.connect(ctx.destination);
 
 let trees: Tree[] = [];
 
-const serializedScene = localStorage.getItem("scene");
-if (serializedScene) {
-  trees = deserialize(serializedScene);
-} else {
-  trees = [
-    createTree({ position: new Vector3(0, 0, -3) }, scene, ctx, master),
-    createTree({ position: new Vector3(0.5, 0, 5) }, scene, ctx, master)
-  ];
+function save() {
+  localStorage.setItem("scene", serialize());
+}
+
+function load() {
+  const serializedScene = localStorage.getItem("scene");
+  trees = serializedScene ? deserialize(serializedScene) : defaultScene();
 }
 
 function serialize(): string {
@@ -239,22 +238,6 @@ function serialize(): string {
     size: tree.size
   }));
   return JSON.stringify(data);
-}
-
-function save() {
-  localStorage.setItem("scene", serialize());
-}
-
-function load() {
-  const serializedScene = localStorage.getItem("scene");
-  if (serializedScene) {
-    trees = deserialize(serializedScene);
-  } else {
-    trees = [
-      createTree({ position: new Vector3(0, 0, -3) }, scene, ctx, master),
-      createTree({ position: new Vector3(0.5, 0, 5) }, scene, ctx, master)
-    ];
-  }
 }
 
 function deserialize(json: string) {
@@ -275,6 +258,23 @@ function deserialize(json: string) {
       master
     )
   );
+}
+
+function defaultScene(): Tree[] {
+  return [
+    createTree(
+      { position: new Vector3(0, 0, -3), size: 1 },
+      scene,
+      ctx,
+      master
+    ),
+    createTree(
+      { position: new Vector3(0.5, 0, 5), size: 3 },
+      scene,
+      ctx,
+      master
+    )
+  ];
 }
 
 type Tool = null | "Seed Placement";
@@ -319,7 +319,7 @@ ground.actionManager.registerAction(
   })
 );
 
-//load();
+load();
 
 engine.runRenderLoop(() => {
   scene.render();
