@@ -114,12 +114,27 @@ function createTree(
   // setup audio
 
   const carrier = new OscillatorNode(ctx, { type: "sine", frequency: 0 });
-  carrier.start();
-  carrier.connect(output);
 
-  const frequency = new ConstantSourceNode(ctx, { offset: getFrequency(1) });
-  frequency.start();
-  frequency.connect(carrier.frequency);
+  const envelope = new GainNode(ctx, { gain: 0.15 });
+  const envOsc = new OscillatorNode(ctx, { type: "sine", frequency: 0 });
+  const envOscWidth = new GainNode(ctx, { gain: 0.1 });
+
+  envOsc.connect(envOscWidth).connect(envelope.gain);
+  carrier.connect(envelope).connect(output);
+  carrier.start();
+  envOsc.start();
+
+  const carrierFrequency = new ConstantSourceNode(ctx, {
+    offset: getFrequency(1)
+  });
+  carrierFrequency.start();
+  carrierFrequency.connect(carrier.frequency);
+
+  const envelopeFrequency = new ConstantSourceNode(ctx, {
+    offset: 1 / 7
+  });
+  envelopeFrequency.start();
+  envelopeFrequency.connect(envOsc.frequency);
 
   function getFrequency(scale: number): number {
     // let's assume reasonable scaling factors go from 0.1 to 10
@@ -150,7 +165,7 @@ function createTree(
     const scaling = distance / startDistance;
 
     trunk.scaling = startScale.scale(scaling);
-    frequency.offset.value = getFrequency(trunk.scaling.x);
+    carrierFrequency.offset.value = getFrequency(trunk.scaling.x);
   });
 
   handleBehavior.useObjectOrienationForDragging = false;
@@ -162,7 +177,7 @@ function createTree(
     root.getWorldMatrix()
   );
   // placeholder for audio props
-  const audio = { carrier, frequency };
+  const audio = { carrier, frequency: carrierFrequency, envelopeFrequency };
 
   return { root, audio };
 }
