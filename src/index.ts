@@ -306,11 +306,13 @@ ground.actionManager.registerAction(
         mesh => mesh === ground
       );
       if (result && result.hit) {
+        trees.push(
         createTree(
           { position: result.pickedPoint || Vector3.Zero() },
           scene,
           ctx,
           master
+          )
         );
         console.log("seed placed");
         save();
