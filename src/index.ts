@@ -143,7 +143,7 @@ function createTree(
 
     // map exponentially [0, 1] -> [0, 1]
     const factor = (Math.exp(s) - 1) / (Math.E - 1);
-    return factor * 1046.5 /* C6 */ + (1 - factor) * 32.7 /* C1 */;
+    return factor * 2093.0 /* C7 */ + (1 - factor) * 32.7 /* C1 */;
   }
 
   function getEnvelopeFrequency(size: number): number {
