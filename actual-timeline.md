@@ -13,6 +13,14 @@
 - got Typescript & Webpack working; had to switch to Babel 4 Alpha, ditch Fuse-Box as it didn't bundle external dependencies
 - adjust colors and camera position
 
+# 02.04. - 11.04.
+
+- seed placement & removal
+- state persistence in LocalStorage
+- sound synthesis (2 days to figure out tech & "harmonic" sounds)
+- switch to fixed camera
+- start adding in-development notes
+
 # TODO
 
 - cause & effect of tools
