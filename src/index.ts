@@ -98,7 +98,7 @@ function createTree(
   const root = new TransformNode("tree", scene);
 
   const height = 2;
-  const size = options.size || 1;
+  const size = options.size || 0.3;
 
   const trunk = MeshBuilder.CreateCylinder(
     "trunk",
@@ -122,7 +122,7 @@ function createTree(
     scene
   );
   trunkSizeHandle.position.y = 1;
-  trunkSizeHandle.position.x = size;
+  trunkSizeHandle.position.z = size;
   trunkSizeHandle.material = handleMaterial;
   trunkSizeHandle.parent = root;
 
