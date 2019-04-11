@@ -104,7 +104,7 @@ function createTree(
     { diameter: 1, segments: 4 },
     scene
   );
-  trunkSizeHandle.position.y = 0.5 * height;
+  trunkSizeHandle.position.y = 1;
   trunkSizeHandle.position.x = size;
   trunkSizeHandle.material = handleMaterial;
   trunkSizeHandle.parent = root;
@@ -135,26 +135,26 @@ function createTree(
   envelopeFrequency.start();
   envelopeFrequency.connect(envOsc.frequency);
 
-  function getFrequency(scale: number): number {
+  function getFrequency(size: number): number {
     // let's assume reasonable scaling factors go from 0.1 to 10
     // set frequencies between 220 and 880 hertz (so that two orders of magnitude ~ two octaves)
     // map [0.1, 10] -> [0, 1]
-    const s = (10 - scale) / (10 - 0.1);
+    const s = (10 - size) / (10 - 0.1);
 
     // map exponentially [0, 1] -> [0, 1]
     const factor = (Math.exp(s) - 1) / (Math.E - 1);
     return factor * 1046.5 /* C6 */ + (1 - factor) * 32.7 /* C1 */;
   }
 
-  function getEnvelopeFrequency(scale: number): number {
+  function getEnvelopeFrequency(size: number): number {
     // for explanation, see `getFrequency()`
-    const s = (10 - scale) / (10 - 0.1);
+    const s = (10 - size) / (10 - 0.1);
     const factor = (Math.exp(s) - 1) / (Math.E - 1);
     return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
   }
 
   let origin: Vector3;
-  let startScale: number;
+  let startSize: number;
   let startDistance: number;
   trunk.scaling.setAll(size);
 
@@ -164,12 +164,12 @@ function createTree(
 
   handleBehavior.onDragStartObservable.add(event => {
     startDistance = event.dragPlanePoint.subtract(origin).length();
-    startScale = data.size;
+    startSize = data.size;
   });
 
   handleBehavior.onDragObservable.add(event => {
     const distance = event.dragPlanePoint.subtract(origin).length();
-    data.size = (startScale * distance) / startDistance;
+    data.size = (startSize * distance) / startDistance;
 
     trunk.scaling.setAll(data.size);
     carrierFrequency.offset.value = getFrequency(data.size);
