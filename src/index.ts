@@ -15,6 +15,23 @@ import {
   ExecuteCodeAction
 } from "@babylonjs/core";
 
+// cache halftones from C1 - C7
+let notes: number[] = [];
+for (let halftones = -57; halftones < 28; halftones++) {
+  notes.push(440 * Math.pow(2, halftones / 12));
+}
+
+// finds the closest frequency match in the notes array
+function roundToChromatic(frequency: number): number {
+  return notes.reduce(
+    (best, current) =>
+      Math.abs(current - frequency) < Math.abs(best - frequency)
+        ? current
+        : best,
+    Infinity
+  );
+}
+
 // NOTE TO SELF: y-axis is up!
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
@@ -143,7 +160,8 @@ function createTree(
 
     // map exponentially [0, 1] -> [0, 1]
     const factor = (Math.exp(s) - 1) / (Math.E - 1);
-    return factor * 2093.0 /* C7 */ + (1 - factor) * 32.7 /* C1 */;
+    const frequency = factor * 2093.0 /* C7 */ + (1 - factor) * 32.7; /* C1 */
+    return roundToChromatic(frequency);
   }
 
   function getEnvelopeFrequency(size: number): number {
