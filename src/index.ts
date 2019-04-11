@@ -171,6 +171,26 @@ function createTree(
     return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
   }
 
+  ////////////////////////////////////////////////////////
+  // setup interaction
+
+  const actionManager = new ActionManager(scene);
+  actionManager.registerAction(
+    new ExecuteCodeAction(
+      {
+        trigger: ActionManager.OnPickUpTrigger
+      },
+      () => {
+        if (tool === "Tree Remover") {
+          removeTree(data);
+        }
+      }
+    )
+  );
+
+  trunk.actionManager = actionManager;
+  crown.actionManager = actionManager;
+
   let origin: Vector3;
   let startSize: number;
   let startDistance: number;
@@ -218,6 +238,13 @@ function createTree(
   const data = { root, size, audio };
 
   return data;
+}
+
+function removeTree(tree: Tree) {
+  tree.root.dispose();
+  tree.audio.carrier.stop();
+  trees = trees.filter(t => t !== tree);
+  save();
 }
 
 const ctx = new AudioContext();
