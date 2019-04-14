@@ -554,3 +554,61 @@ function audio_v2(ctx: AudioContext) {
 
   mix.connect(lopass).connect(master);
 }
+
+interface AdsrOptions extends GainOptions {
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+}
+
+class AdsrNode extends GainNode {
+  private attack: number;
+  private decay: number;
+  private sustain: number;
+  private releaseTime: number;
+
+  constructor(ctx: AudioContext, options: AdsrOptions) {
+    super(ctx, { ...options, gain: 0 });
+    this.attack = options.attack;
+    this.decay = options.decay;
+    this.sustain = options.sustain;
+    this.releaseTime = options.release;
+  }
+
+  trigger() {
+    const now = ctx.currentTime;
+    this.gain
+      .cancelScheduledValues(now)
+      .setTargetAtTime(1, now, this.attack)
+      .setTargetAtTime(this.sustain, now + this.attack, this.decay);
+  }
+
+  release() {
+    const now = ctx.currentTime;
+    this.gain.setTargetAtTime(0, now, this.releaseTime);
+  }
+}
+
+const osc = new OscillatorNode(ctx, { type: "sawtooth", frequency: 391 });
+osc.start();
+
+const adsr = new AdsrNode(ctx, {
+  attack: 0.1,
+  decay: 1,
+  sustain: 0.3,
+  release: 2
+});
+osc.connect(adsr).connect(master);
+
+document.addEventListener("keydown", ev => {
+  if (ev.key === "d" && !ev.repeat) {
+    adsr.trigger();
+  }
+});
+
+document.addEventListener("keyup", ev => {
+  if (ev.key === "d") {
+    adsr.release();
+  }
+});
