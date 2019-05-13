@@ -563,25 +563,29 @@ interface AdsrOptions extends GainOptions {
 }
 
 class AdsrNode extends GainNode {
-  private attack: number;
-  private decay: number;
-  private sustain: number;
+  private attackTime: number;
+  private decayTime: number;
+  private sustainLevel: number;
   private releaseTime: number;
 
   constructor(ctx: AudioContext, options: AdsrOptions) {
     super(ctx, { ...options, gain: 0 });
-    this.attack = options.attack;
-    this.decay = options.decay;
-    this.sustain = options.sustain;
-    this.releaseTime = options.release;
+    this.attackTime = options.attack * 0.25;
+    this.decayTime = options.decay * 0.25;
+    this.sustainLevel = options.sustain;
+    this.releaseTime = options.release * 0.25;
   }
 
   trigger() {
     const now = ctx.currentTime;
     this.gain
       .cancelScheduledValues(now)
-      .setTargetAtTime(1, now, this.attack)
-      .setTargetAtTime(this.sustain, now + this.attack, this.decay);
+      .setTargetAtTime(1, now, this.attackTime)
+      .setTargetAtTime(
+        this.sustainLevel,
+        now + this.attackTime,
+        this.decayTime
+      );
   }
 
   release() {
@@ -590,25 +594,37 @@ class AdsrNode extends GainNode {
   }
 }
 
-const osc = new OscillatorNode(ctx, { type: "sawtooth", frequency: 391 });
-osc.start();
+const osc = new OscillatorNode(ctx, { type: "sine", frequency: 391 });
 
-const adsr = new AdsrNode(ctx, {
+const adsrOptions = {
   attack: 0.1,
   decay: 1,
   sustain: 0.3,
   release: 2
-});
+};
+
+const adsr = new AdsrNode(ctx, adsrOptions);
+
+const mod = new OscillatorNode(ctx, { type: "sine", frequency: 387 });
+const modAdsr = new AdsrNode(ctx, adsrOptions);
+const modWidth = new GainNode(ctx, { gain: 391 * 3 });
+
+mod.connect(modWidth).connect(osc.frequency);
+mod.start();
+
 osc.connect(adsr).connect(master);
+osc.start();
 
 document.addEventListener("keydown", ev => {
-  if (ev.key === "d" && !ev.repeat) {
+  if (ev.key === "f" && !ev.repeat) {
     adsr.trigger();
+    modAdsr.trigger();
   }
 });
 
 document.addEventListener("keyup", ev => {
-  if (ev.key === "d") {
+  if (ev.key === "f") {
     adsr.release();
+    modAdsr.release();
   }
 });
