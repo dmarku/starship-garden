@@ -12,7 +12,8 @@ import {
   PointerDragBehavior,
   TransformNode,
   ActionManager,
-  ExecuteCodeAction
+  ExecuteCodeAction,
+  Mesh
 } from "@babylonjs/core";
 
 // cache halftones from C1 - C7
@@ -70,12 +71,12 @@ treeMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
 const handleMaterial = new StandardMaterial("handleMaterial", scene);
 handleMaterial.diffuseColor = new Color3(1, 1, 1);
 
-interface TreeState {
+interface TreeOptions {
   position?: { x: number; y: number; z: number };
   size?: number;
 }
 
-interface Tree {
+interface ITree {
   root: TransformNode;
   audio: {
     carrier: OscillatorNode;
@@ -85,159 +86,193 @@ interface Tree {
   size: number;
 }
 
-function createTree(
-  options: TreeState,
-  scene: Scene,
-  ctx: AudioContext,
-  output: AudioNode
-) {
-  ////////////////////////////////////////////////////////
-  // setup graphics
+class TreeGraphics extends TransformNode {
+  public trunk: Mesh;
+  public crown: Mesh;
+  public handle: Mesh;
 
-  // this is the tree's "root" in the sense of scene hierarchy, not biology
-  const root = new TransformNode("tree", scene);
+  constructor(name: string, scene: Scene, size: number = 0.3) {
+    super(name, scene);
 
-  const height = 2;
-  const size = options.size || 0.3;
+    const height = 2;
 
-  const trunk = MeshBuilder.CreateCylinder(
-    "trunk",
-    { height, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 12 },
-    scene
-  );
-  // offset by y so that the trunk's base is centered at its local origin
-  trunk.bakeTransformIntoVertices(Matrix.Translation(0, 0.5 * height, 0));
-  trunk.material = treeMaterial;
-  trunk.parent = root;
+    this.trunk = MeshBuilder.CreateCylinder(
+      "trunk",
+      { height, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 12 },
+      scene
+    );
+    // offset by y so that the trunk's base is centered at its local origin
+    this.trunk.bakeTransformIntoVertices(
+      Matrix.Translation(0, 0.5 * height, 0)
+    );
+    this.trunk.material = treeMaterial;
+    this.trunk.parent = this;
 
-  const crown = MeshBuilder.CreateSphere("crown", { diameter: 2.5 }, scene);
-  // center = trunk height + crown radius
-  crown.position.y = 2 + 1.25;
-  crown.material = treeMaterial;
-  crown.parent = trunk;
+    this.crown = MeshBuilder.CreateSphere("crown", { diameter: 2.5 }, scene);
+    // center = trunk height + crown radius
+    this.crown.position.y = 2 + 1.25;
+    this.crown.material = treeMaterial;
+    this.crown.parent = this.trunk;
 
-  const trunkSizeHandle = MeshBuilder.CreateSphere(
-    "trunk size handle",
-    { diameter: 1, segments: 4 },
-    scene
-  );
-  trunkSizeHandle.position.y = 1;
-  trunkSizeHandle.position.z = size;
-  trunkSizeHandle.material = handleMaterial;
-  trunkSizeHandle.parent = root;
-
-  ////////////////////////////////////////////////////////
-  // setup audio
-
-  const carrier = new OscillatorNode(ctx, { type: "sine", frequency: 0 });
-
-  const envelope = new GainNode(ctx, { gain: 0.15 });
-  const envOsc = new OscillatorNode(ctx, { type: "sine", frequency: 0 });
-  const envOscWidth = new GainNode(ctx, { gain: 0.1 });
-
-  envOsc.connect(envOscWidth).connect(envelope.gain);
-  carrier.connect(envelope).connect(output);
-  carrier.start();
-  envOsc.start();
-
-  const carrierFrequency = new ConstantSourceNode(ctx, {
-    offset: getFrequency(size)
-  });
-  carrierFrequency.start();
-  carrierFrequency.connect(carrier.frequency);
-
-  const envelopeFrequency = new ConstantSourceNode(ctx, {
-    offset: getEnvelopeFrequency(size)
-  });
-  envelopeFrequency.start();
-  envelopeFrequency.connect(envOsc.frequency);
-
-  function getFrequency(size: number): number {
-    // let's assume reasonable scaling factors go from 0.1 to 10
-    // set frequencies between 220 and 880 hertz (so that two orders of magnitude ~ two octaves)
-    // map [0.1, 10] -> [0, 1]
-    const s = (10 - size) / (10 - 0.1);
-
-    // map exponentially [0, 1] -> [0, 1]
-    const factor = (Math.exp(s) - 1) / (Math.E - 1);
-    const frequency = factor * 2093.0 /* C7 */ + (1 - factor) * 32.7; /* C1 */
-    return roundToChromatic(frequency);
+    this.handle = MeshBuilder.CreateSphere(
+      "trunk size handle",
+      { diameter: 1, segments: 4 },
+      scene
+    );
+    this.handle.position.y = 1;
+    this.handle.position.z = size;
+    this.handle.material = handleMaterial;
+    this.handle.parent = this;
   }
+}
 
-  function getEnvelopeFrequency(size: number): number {
-    // for explanation, see `getFrequency()`
-    const s = (10 - size) / (10 - 0.1);
-    const factor = (Math.exp(s) - 1) / (Math.E - 1);
-    return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
-  }
+class Tree implements ITree {
+  public root: TransformNode;
+  public audio: ITree["audio"];
+  public size: number;
 
-  ////////////////////////////////////////////////////////
-  // setup interaction
+  constructor(
+    options: TreeOptions,
+    scene: Scene,
+    ctx: AudioContext,
+    output: AudioNode
+  ) {
+    ////////////////////////////////////////////////////////
+    // setup graphics
 
-  const actionManager = new ActionManager(scene);
-  actionManager.registerAction(
-    new ExecuteCodeAction(
-      {
-        trigger: ActionManager.OnPickUpTrigger
-      },
-      () => {
-        if (tool === "Tree Remover") {
-          removeTree(data);
+    ////////////////////////////////////////////////////////
+    // setup audio
+
+    const size = options.size || 0.3;
+
+    const root = new TreeGraphics("tree", scene, size);
+
+    // this is the tree's "root" in the sense of scene hierarchy, not biology
+    root.position = options.position
+      ? new Vector3(options.position.x, options.position.y, options.position.z)
+      : Vector3.Zero();
+
+    const carrier = new OscillatorNode(ctx, { type: "sine", frequency: 0 });
+
+    const envelope = new GainNode(ctx, { gain: 0.15 });
+    const envOsc = new OscillatorNode(ctx, { type: "sine", frequency: 0 });
+    const envOscWidth = new GainNode(ctx, { gain: 0.1 });
+
+    envOsc.connect(envOscWidth).connect(envelope.gain);
+    carrier.connect(envelope).connect(output);
+    carrier.start();
+    envOsc.start();
+
+    const carrierFrequency = new ConstantSourceNode(ctx, {
+      offset: getFrequency(size)
+    });
+    carrierFrequency.start();
+    carrierFrequency.connect(carrier.frequency);
+
+    const envelopeFrequency = new ConstantSourceNode(ctx, {
+      offset: getEnvelopeFrequency(size)
+    });
+    envelopeFrequency.start();
+    envelopeFrequency.connect(envOsc.frequency);
+
+    function getFrequency(size: number): number {
+      // let's assume reasonable scaling factors go from 0.1 to 10
+      // set frequencies between 220 and 880 hertz (so that two orders of magnitude ~ two octaves)
+      // map [0.1, 10] -> [0, 1]
+      const s = (10 - size) / (10 - 0.1);
+
+      // map exponentially [0, 1] -> [0, 1]
+      const factor = (Math.exp(s) - 1) / (Math.E - 1);
+      const frequency = factor * 2093.0 /* C7 */ + (1 - factor) * 32.7; /* C1 */
+      return roundToChromatic(frequency);
+    }
+
+    function getEnvelopeFrequency(size: number): number {
+      // for explanation, see `getFrequency()`
+      const s = (10 - size) / (10 - 0.1);
+      const factor = (Math.exp(s) - 1) / (Math.E - 1);
+      return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
+    }
+
+    ////////////////////////////////////////////////////////
+    // setup interaction
+
+    const actionManager = new ActionManager(scene);
+    actionManager.registerAction(
+      new ExecuteCodeAction(
+        {
+          trigger: ActionManager.OnPickUpTrigger
+        },
+        () => {
+          if (tool === "Tree Remover") {
+            removeTree(this);
+          }
         }
-      }
-    )
-  );
+      )
+    );
 
-  trunk.actionManager = actionManager;
-  crown.actionManager = actionManager;
+    root.trunk.actionManager = actionManager;
+    root.crown.actionManager = actionManager;
 
-  let origin: Vector3;
-  let startSize: number;
-  let startDistance: number;
-  trunk.scaling.setAll(size);
+    let origin: Vector3;
+    let startSize: number;
+    let startDistance: number;
+    root.trunk.scaling.setAll(size);
 
-  const handleBehavior = new PointerDragBehavior({
-    dragPlaneNormal: Vector3.Up()
-  });
+    const handleBehavior = new PointerDragBehavior({
+      dragPlaneNormal: Vector3.Up()
+    });
 
-  handleBehavior.onDragStartObservable.add(event => {
-    startDistance = event.dragPlanePoint.subtract(origin).length();
-    startSize = data.size;
-  });
+    handleBehavior.onDragStartObservable.add(event => {
+      startDistance = event.dragPlanePoint.subtract(origin).length();
+      startSize = this.size;
+    });
 
-  handleBehavior.onDragObservable.add(event => {
-    const distance = event.dragPlanePoint.subtract(origin).length();
-    data.size = (startSize * distance) / startDistance;
+    handleBehavior.onDragObservable.add(event => {
+      const distance = event.dragPlanePoint.subtract(origin).length();
+      this.size = (startSize * distance) / startDistance;
 
-    trunk.scaling.setAll(data.size);
-    carrierFrequency.offset.value = getFrequency(data.size);
-    envelopeFrequency.offset.value = getEnvelopeFrequency(data.size);
-  });
+      root.trunk.scaling.setAll(this.size);
+      carrierFrequency.offset.value = getFrequency(this.size);
+      envelopeFrequency.offset.value = getEnvelopeFrequency(this.size);
+    });
 
-  handleBehavior.onDragEndObservable.add(() => {
-    save();
-  });
+    handleBehavior.onDragEndObservable.add(() => {
+      save();
+    });
 
-  handleBehavior.useObjectOrienationForDragging = false;
-  handleBehavior.attach(trunkSizeHandle);
+    handleBehavior.useObjectOrienationForDragging = false;
+    handleBehavior.attach(root.handle);
 
-  root.position = options.position
-    ? new Vector3(options.position.x, options.position.y, options.position.z)
-    : Vector3.Zero();
-  origin = Vector3.TransformCoordinates(
-    new Vector3(0, 1, 0),
-    root.getWorldMatrix()
-  );
-  // placeholder for audio props
-  const audio = {
-    carrier,
-    frequency: carrierFrequency.offset,
-    envelopeFrequency: envelopeFrequency.offset
-  };
+    root.position = options.position
+      ? new Vector3(options.position.x, options.position.y, options.position.z)
+      : Vector3.Zero();
+    origin = Vector3.TransformCoordinates(
+      new Vector3(0, 1, 0),
+      root.getWorldMatrix()
+    );
+    // placeholder for audio props
+    const audio = {
+      carrier,
+      frequency: carrierFrequency.offset,
+      envelopeFrequency: envelopeFrequency.offset
+    };
 
-  const data = { root, size, audio };
+    this.root = root;
+    this.size = size;
+    this.audio = audio;
+  }
 
-  return data;
+  toJson() {
+    return {
+      position: {
+        x: this.root.position.x,
+        y: this.root.position.y,
+        z: this.root.position.z
+      },
+      size: this.size
+    };
+  }
 }
 
 function removeTree(tree: Tree) {
@@ -279,37 +314,28 @@ function serialize(): string {
 function deserialize(json: string) {
   const data = JSON.parse(json) as any[];
   // TODO: clear everything before
-  return data.map(parameters =>
-    createTree(
-      {
-        ...parameters,
-        position: new Vector3(
-          parameters.position.x,
-          parameters.position.y,
-          parameters.position.z
-        )
-      },
-      scene,
-      ctx,
-      master
-    )
+  return data.map(
+    parameters =>
+      new Tree(
+        {
+          ...parameters,
+          position: new Vector3(
+            parameters.position.x,
+            parameters.position.y,
+            parameters.position.z
+          )
+        },
+        scene,
+        ctx,
+        master
+      )
   );
 }
 
 function defaultScene(): Tree[] {
   return [
-    createTree(
-      { position: new Vector3(0, 0, -3), size: 1 },
-      scene,
-      ctx,
-      master
-    ),
-    createTree(
-      { position: new Vector3(0.5, 0, 5), size: 3 },
-      scene,
-      ctx,
-      master
-    )
+    new Tree({ position: new Vector3(0, 0, -3), size: 1 }, scene, ctx, master),
+    new Tree({ position: new Vector3(0.5, 0, 5), size: 3 }, scene, ctx, master)
   ];
 }
 
@@ -358,7 +384,7 @@ ground.actionManager.registerAction(
       );
       if (result && result.hit) {
         trees.push(
-          createTree(
+          new Tree(
             { position: result.pickedPoint || Vector3.Zero() },
             scene,
             ctx,
