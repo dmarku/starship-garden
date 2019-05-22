@@ -126,10 +126,32 @@ class TreeGraphics extends TransformNode {
   }
 }
 
+function getFrequency(size: number): number {
+  // let's assume reasonable scaling factors go from 0.1 to 10
+  // set frequencies between 220 and 880 hertz (so that two orders of magnitude ~ two octaves)
+  // map [0.1, 10] -> [0, 1]
+  const s = (10 - size) / (10 - 0.1);
+
+  // map exponentially [0, 1] -> [0, 1]
+  const factor = (Math.exp(s) - 1) / (Math.E - 1);
+  const frequency = factor * 2093.0 /* C7 */ + (1 - factor) * 32.7; /* C1 */
+  return roundToChromatic(frequency);
+}
+
+function getEnvelopeFrequency(size: number): number {
+  // for explanation, see `getFrequency()`
+  const s = (10 - size) / (10 - 0.1);
+  const factor = (Math.exp(s) - 1) / (Math.E - 1);
+  return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
+}
+
 class Tree implements ITree {
-  public root: TransformNode;
+  public root: TransformNode & { trunk: TransformNode };
   public audio: ITree["audio"];
   public size: number;
+
+  private carrierFrequency: ConstantSourceNode;
+  private envelopeFrequency: ConstantSourceNode;
 
   constructor(
     options: TreeOptions,
@@ -163,36 +185,17 @@ class Tree implements ITree {
     carrier.start();
     envOsc.start();
 
-    const carrierFrequency = new ConstantSourceNode(ctx, {
+    this.carrierFrequency = new ConstantSourceNode(ctx, {
       offset: getFrequency(size)
     });
-    carrierFrequency.start();
-    carrierFrequency.connect(carrier.frequency);
+    this.carrierFrequency.start();
+    this.carrierFrequency.connect(carrier.frequency);
 
-    const envelopeFrequency = new ConstantSourceNode(ctx, {
+    this.envelopeFrequency = new ConstantSourceNode(ctx, {
       offset: getEnvelopeFrequency(size)
     });
-    envelopeFrequency.start();
-    envelopeFrequency.connect(envOsc.frequency);
-
-    function getFrequency(size: number): number {
-      // let's assume reasonable scaling factors go from 0.1 to 10
-      // set frequencies between 220 and 880 hertz (so that two orders of magnitude ~ two octaves)
-      // map [0.1, 10] -> [0, 1]
-      const s = (10 - size) / (10 - 0.1);
-
-      // map exponentially [0, 1] -> [0, 1]
-      const factor = (Math.exp(s) - 1) / (Math.E - 1);
-      const frequency = factor * 2093.0 /* C7 */ + (1 - factor) * 32.7; /* C1 */
-      return roundToChromatic(frequency);
-    }
-
-    function getEnvelopeFrequency(size: number): number {
-      // for explanation, see `getFrequency()`
-      const s = (10 - size) / (10 - 0.1);
-      const factor = (Math.exp(s) - 1) / (Math.E - 1);
-      return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
-    }
+    this.envelopeFrequency.start();
+    this.envelopeFrequency.connect(envOsc.frequency);
 
     ////////////////////////////////////////////////////////
     // setup interaction
@@ -206,6 +209,9 @@ class Tree implements ITree {
         () => {
           if (tool === "Tree Remover") {
             removeTree(this);
+          }
+          if (tool === "Fertilizer") {
+            this.grow();
           }
         }
       )
@@ -233,8 +239,8 @@ class Tree implements ITree {
       this.size = (startSize * distance) / startDistance;
 
       root.trunk.scaling.setAll(this.size);
-      carrierFrequency.offset.value = getFrequency(this.size);
-      envelopeFrequency.offset.value = getEnvelopeFrequency(this.size);
+      this.carrierFrequency.offset.value = getFrequency(this.size);
+      this.envelopeFrequency.offset.value = getEnvelopeFrequency(this.size);
     });
 
     handleBehavior.onDragEndObservable.add(() => {
@@ -254,8 +260,8 @@ class Tree implements ITree {
     // placeholder for audio props
     const audio = {
       carrier,
-      frequency: carrierFrequency.offset,
-      envelopeFrequency: envelopeFrequency.offset
+      frequency: this.carrierFrequency.offset,
+      envelopeFrequency: this.envelopeFrequency.offset
     };
 
     this.root = root;
@@ -272,6 +278,15 @@ class Tree implements ITree {
       },
       size: this.size
     };
+  }
+
+  grow() {
+    this.size += 1;
+
+    this.root.trunk.scaling.setAll(this.size);
+    this.carrierFrequency.offset.value = getFrequency(this.size);
+    this.envelopeFrequency.offset.value = getEnvelopeFrequency(this.size);
+    save();
   }
 }
 
@@ -339,37 +354,38 @@ function defaultScene(): Tree[] {
   ];
 }
 
-type Tool = null | "Seed Placement" | "Tree Remover";
+type Tool = null | "Seed Placement" | "Tree Remover" | "Fertilizer";
 let tool: Tool = null;
+
+function toggleTool(newTool: Tool) {
+  if (tool !== newTool) {
+    tool = newTool;
+    console.log(`${newTool} selected`);
+  } else {
+    tool = null;
+    console.log("no tool selected");
+  }
+}
 
 scene.actionManager = new ActionManager(scene);
 scene.actionManager.registerAction(
   new ExecuteCodeAction(
     { trigger: ActionManager.OnKeyUpTrigger, parameter: "s" },
-    () => {
-      if (tool !== "Seed Placement") {
-        tool = "Seed Placement";
-        console.log("seeding tool selected");
-      } else {
-        tool = null;
-        console.log("no tool selected");
-      }
-    }
+    () => toggleTool("Seed Placement")
   )
 );
 
 scene.actionManager.registerAction(
   new ExecuteCodeAction(
     { trigger: ActionManager.OnKeyUpTrigger, parameter: "d" },
-    () => {
-      if (tool !== "Tree Remover") {
-        tool = "Tree Remover";
-        console.log("remover selected");
-      } else {
-        tool = null;
-        console.log("no tool selected");
-      }
-    }
+    () => toggleTool("Tree Remover")
+  )
+);
+
+scene.actionManager.registerAction(
+  new ExecuteCodeAction(
+    { trigger: ActionManager.OnKeyUpTrigger, parameter: "f" },
+    () => toggleTool("Fertilizer")
   )
 );
 
@@ -413,6 +429,7 @@ function onVisibilityChange() {
 }
 
 document.addEventListener("visibilitychange", onVisibilityChange);
+// trigger once for initialization
 onVisibilityChange();
 
 //audio_v1(ctx);
@@ -642,14 +659,14 @@ osc.connect(adsr).connect(master);
 osc.start();
 
 document.addEventListener("keydown", ev => {
-  if (ev.key === "f" && !ev.repeat) {
+  if (ev.key === "g" && !ev.repeat) {
     adsr.trigger();
     modAdsr.trigger();
   }
 });
 
 document.addEventListener("keyup", ev => {
-  if (ev.key === "f") {
+  if (ev.key === "g") {
     adsr.release();
     modAdsr.release();
   }
