@@ -9,7 +9,6 @@ import {
   Color3,
   StandardMaterial,
   Color4,
-  PointerDragBehavior,
   TransformNode,
   ActionManager,
   ExecuteCodeAction,
@@ -42,17 +41,10 @@ const engine = new Engine(canvas, true);
 const scene = new Scene(engine);
 scene.clearColor = Color4.FromHexString("#8baff3ff");
 
-const camera = new ArcRotateCamera(
-  "cam",
-  0,
-  0.32 * Math.PI,
-  30,
-  Vector3.Zero(),
-  scene
-);
+new ArcRotateCamera("cam", 0, 0.32 * Math.PI, 30, Vector3.Zero(), scene);
 //camera.attachControl(canvas, true);
 
-const light = new HemisphericLight("light", new Vector3(1, 1, 0), scene);
+new HemisphericLight("light", new Vector3(1, 1, 0), scene);
 
 const ground = MeshBuilder.CreateGround(
   "ground",
@@ -89,12 +81,12 @@ interface ITree {
 class TreeGraphics extends TransformNode {
   public trunk: Mesh;
   public crown: Mesh;
-  public handle: Mesh;
 
-  constructor(name: string, scene: Scene, size: number = 0.3) {
+  constructor(name: string, scene: Scene) {
     super(name, scene);
 
     const height = 2;
+    const crownDiameter = 2.5;
 
     this.trunk = MeshBuilder.CreateCylinder(
       "trunk",
@@ -108,21 +100,15 @@ class TreeGraphics extends TransformNode {
     this.trunk.material = treeMaterial;
     this.trunk.parent = this;
 
-    this.crown = MeshBuilder.CreateSphere("crown", { diameter: 2.5 }, scene);
-    // center = trunk height + crown radius
-    this.crown.position.y = 2 + 1.25;
-    this.crown.material = treeMaterial;
-    this.crown.parent = this.trunk;
-
-    this.handle = MeshBuilder.CreateSphere(
-      "trunk size handle",
-      { diameter: 1, segments: 4 },
+    this.crown = MeshBuilder.CreateSphere(
+      "crown",
+      { diameter: crownDiameter },
       scene
     );
-    this.handle.position.y = 1;
-    this.handle.position.z = size;
-    this.handle.material = handleMaterial;
-    this.handle.parent = this;
+    // center = trunk height + crown radius
+    this.crown.position.y = height + 0.5 * crownDiameter;
+    this.crown.material = treeMaterial;
+    this.crown.parent = this.trunk;
   }
 }
 
@@ -146,7 +132,7 @@ function getEnvelopeFrequency(size: number): number {
 }
 
 class Tree implements ITree {
-  public root: TransformNode & { trunk: TransformNode };
+  public root: TreeGraphics;
   public audio: ITree["audio"];
   public size: number;
 
@@ -159,20 +145,19 @@ class Tree implements ITree {
     ctx: AudioContext,
     output: AudioNode
   ) {
+    const size = options.size || 0.3;
     ////////////////////////////////////////////////////////
     // setup graphics
 
-    ////////////////////////////////////////////////////////
-    // setup audio
-
-    const size = options.size || 0.3;
-
-    const root = new TreeGraphics("tree", scene, size);
+    const root = new TreeGraphics("tree", scene);
 
     // this is the tree's "root" in the sense of scene hierarchy, not biology
     root.position = options.position
       ? new Vector3(options.position.x, options.position.y, options.position.z)
       : Vector3.Zero();
+
+    ////////////////////////////////////////////////////////
+    // setup audio
 
     const carrier = new OscillatorNode(ctx, { type: "sine", frequency: 0 });
 
@@ -220,43 +205,10 @@ class Tree implements ITree {
     root.trunk.actionManager = actionManager;
     root.crown.actionManager = actionManager;
 
-    let origin: Vector3;
-    let startSize: number;
-    let startDistance: number;
-    root.trunk.scaling.setAll(size);
-
-    const handleBehavior = new PointerDragBehavior({
-      dragPlaneNormal: Vector3.Up()
-    });
-
-    handleBehavior.onDragStartObservable.add(event => {
-      startDistance = event.dragPlanePoint.subtract(origin).length();
-      startSize = this.size;
-    });
-
-    handleBehavior.onDragObservable.add(event => {
-      const distance = event.dragPlanePoint.subtract(origin).length();
-      this.size = (startSize * distance) / startDistance;
-
-      root.trunk.scaling.setAll(this.size);
-      this.carrierFrequency.offset.value = getFrequency(this.size);
-      this.envelopeFrequency.offset.value = getEnvelopeFrequency(this.size);
-    });
-
-    handleBehavior.onDragEndObservable.add(() => {
-      save();
-    });
-
-    handleBehavior.useObjectOrienationForDragging = false;
-    handleBehavior.attach(root.handle);
-
     root.position = options.position
       ? new Vector3(options.position.x, options.position.y, options.position.z)
       : Vector3.Zero();
-    origin = Vector3.TransformCoordinates(
-      new Vector3(0, 1, 0),
-      root.getWorldMatrix()
-    );
+
     // placeholder for audio props
     const audio = {
       carrier,
@@ -431,172 +383,6 @@ function onVisibilityChange() {
 document.addEventListener("visibilitychange", onVisibilityChange);
 // trigger once for initialization
 onVisibilityChange();
-
-//audio_v1(ctx);
-//audio_v2(ctx);
-
-function noise(ctx: AudioContext) {
-  const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < buffer.length; ++i) {
-    data[i] = Math.random() * 2 - 1;
-  }
-
-  const noiseGenerator = ctx.createBufferSource();
-  noiseGenerator.buffer = buffer;
-  noiseGenerator.loop = true;
-  return noiseGenerator;
-}
-
-function audio_v1(ctx: AudioContext) {
-  const carrier = new OscillatorNode(ctx, {
-    type: "sine"
-  });
-  carrier.connect(master);
-  carrier.start();
-
-  const baseFrequency = new ConstantSourceNode(ctx, {
-    offset: 0
-  });
-
-  baseFrequency.start();
-  baseFrequency.connect(carrier.frequency);
-
-  const modRatio = new GainNode(ctx, {
-    gain: 4 / 5
-  });
-
-  const modulator = new OscillatorNode(ctx, {
-    frequency: 205,
-    type: "sine"
-  });
-  modulator.start();
-
-  baseFrequency.connect(modRatio).connect(modulator.frequency);
-
-  const modWidth = new GainNode(ctx, {
-    gain: 880
-  });
-
-  modulator.connect(modWidth).connect(carrier.frequency);
-
-  const longTermModulator = new OscillatorNode(ctx, {
-    type: "sine",
-    frequency: 1 / 6
-  });
-  longTermModulator.start();
-
-  const longTermModWidth = new GainNode(ctx, {
-    gain: 220 / 0.5
-  });
-
-  longTermModulator.connect(longTermModWidth).connect(carrier.frequency);
-
-  const filter = new BiquadFilterNode(ctx, {
-    type: "bandpass",
-    frequency: 1320
-  });
-
-  const carrierGain = new GainNode(ctx, { gain: 0.5 });
-
-  carrier
-    .connect(filter)
-    .connect(carrierGain)
-    .connect(master);
-}
-
-function audio_v2(ctx: AudioContext) {
-  const f = 391.65;
-  const type = "sine";
-
-  const noiseGen = noise(ctx);
-  noiseGen.connect(master);
-  //noiseGen.start();
-
-  const base = new OscillatorNode(ctx, {
-    type,
-    frequency: 850
-  });
-
-  const terz = new OscillatorNode(ctx, {
-    type,
-    frequency: f
-  });
-
-  const quinte = new OscillatorNode(ctx, {
-    type,
-    frequency: (3 / 2) * f
-  });
-
-  const baseEnv = new GainNode(ctx, {
-    gain: 0.5
-  });
-
-  const baseEnvOsc = new OscillatorNode(ctx, {
-    type: "sine",
-    frequency: 1 / (5 * 10)
-  });
-
-  const baseEnvOscWidth = new GainNode(ctx, {
-    gain: 0.3
-  });
-
-  baseEnvOsc.start();
-  baseEnvOsc.connect(baseEnvOscWidth).connect(baseEnv.gain);
-
-  /*
-  const terzEnv = new GainNode(ctx, {
-    gain: 0.3
-  });
-
-  const terzEnvOsc = new OscillatorNode(ctx, {
-    type: "sine",
-    frequency: 1 / (7 * 10)
-  });
-
-  const terzEnvOscWidth = new GainNode(ctx, {
-    gain: 0.3
-  });
-
-  terzEnvOsc.start();
-  terzEnvOsc.connect(terzEnvOscWidth).connect(terzEnv.gain);
-
-  const quinteEnv = new GainNode(ctx, {
-    gain: 0.2
-  });
-
-  const quinteEnvOsc = new OscillatorNode(ctx, {
-    type: "sine",
-    frequency: 1 / (11 * 10)
-  });
-
-  const quinteEnvOscWidth = new GainNode(ctx, {
-    gain: 0.3
-  });
-
-  quinteEnvOsc.start();
-  quinteEnvOsc.connect(quinteEnvOscWidth).connect(quinteEnv.gain);
-  */
-
-  const mix = new GainNode(ctx);
-
-  base.connect(baseEnv).connect(mix);
-  /*
-  terz.connect(terzEnv).connect(mix);
-  quinte.connect(quinteEnv).connect(mix);
-  */
-
-  const lopass = new BiquadFilterNode(ctx, {
-    type: "lowpass",
-    frequency: 2 * f
-  });
-
-  base.start();
-  terz.start();
-  quinte.start();
-
-  mix.connect(lopass).connect(master);
-}
 
 interface AdsrOptions extends GainOptions {
   attack: number;
