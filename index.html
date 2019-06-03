@@ -22,14 +22,28 @@
   </head>
 
   <body>
-    <h1>Starship Garden</h1>
-    <div class="canvas-container">
+    <header>
+      <h1>Starship Garden</h1>
+    </header>
+
+    <section class="canvas-container">
       <canvas id="scene" width="900" height="600"></canvas>
+    </section>
+
+    <section class="controls">
+      <p>Currently selected: <span id="tool-display">Nothing</span></p>
+      <button id="select-nothing">Nothing</button>
+      <button id="select-fertilize">Fertilize</button>
+      <button id="select-seed">Seed</button>
+      <button id="select-remove">Remove</button>
+    </section>
+
+    <footer>
       <p>
         Usage: S - select/deselect seed tool; D - select/deselect remover tool;
         F - select/deselect fertilizer; G - trigger experimental ADSR envelope
         tone
       </p>
-    </div>
+    </footer>
   </body>
 </html>

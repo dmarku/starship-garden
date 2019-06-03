@@ -375,6 +375,10 @@ function toggleTool(newTool: Tool) {
     }
     console.log("no tool selected");
   }
+
+  if (toolDisplay) {
+    toolDisplay.innerText = tool ? tool : "Nothing";
+  }
 }
 
 scene.actionManager = new ActionManager(scene);
@@ -441,6 +445,18 @@ function onVisibilityChange() {
 document.addEventListener("visibilitychange", onVisibilityChange);
 // trigger once for initialization
 onVisibilityChange();
+
+const noToolButton = document.getElementById("select-nothing"),
+  seedToolButton = document.getElementById("select-seed"),
+  fertilizeToolButton = document.getElementById("select-fertilize"),
+  removeToolButton = document.getElementById("select-remove");
+
+const toolDisplay = document.getElementById('tool-display');
+
+if (noToolButton) noToolButton.addEventListener("click", () => toggleTool(null));
+if ( seedToolButton) seedToolButton.addEventListener("click", () => toggleTool("Seed Placement"));
+if (fertilizeToolButton) fertilizeToolButton.addEventListener("click", () => toggleTool("Fertilizer"));
+if (removeToolButton) removeToolButton.addEventListener("click", () => toggleTool("Tree Remover"));
 
 interface AdsrOptions extends GainOptions {
   attack: number;
