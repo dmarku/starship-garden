@@ -81,12 +81,15 @@ interface ITree {
 class TreeGraphics extends TransformNode {
   public trunk: Mesh;
   public crown: Mesh;
+  public material: StandardMaterial;
 
   constructor(name: string, scene: Scene) {
     super(name, scene);
 
     const height = 2;
     const crownDiameter = 2.5;
+
+    this.material = treeMaterial.clone(`tree material for ${name}`);
 
     this.trunk = MeshBuilder.CreateCylinder(
       "trunk",
@@ -97,7 +100,7 @@ class TreeGraphics extends TransformNode {
     this.trunk.bakeTransformIntoVertices(
       Matrix.Translation(0, 0.5 * height, 0)
     );
-    this.trunk.material = treeMaterial;
+    this.trunk.material = this.material;
     this.trunk.parent = this;
 
     this.crown = MeshBuilder.CreateSphere(
@@ -107,7 +110,7 @@ class TreeGraphics extends TransformNode {
     );
     // center = trunk height + crown radius
     this.crown.position.y = height + 0.5 * crownDiameter;
-    this.crown.material = treeMaterial;
+    this.crown.material = this.material;
     this.crown.parent = this.trunk;
   }
 }
@@ -199,6 +202,20 @@ class Tree implements ITree {
             this.grow();
           }
         }
+      )
+    );
+
+    actionManager.registerAction(
+      new ExecuteCodeAction(
+        { trigger: ActionManager.OnPointerOverTrigger },
+        () => focusTree(this)
+      )
+    );
+
+    actionManager.registerAction(
+      new ExecuteCodeAction(
+        { trigger: ActionManager.OnPointerOutTrigger },
+        () => blurTree(this)
       )
     );
 
@@ -309,12 +326,53 @@ function defaultScene(): Tree[] {
 type Tool = null | "Seed Placement" | "Tree Remover" | "Fertilizer";
 let tool: Tool = null;
 
+let focusedTree: Tree | null = null;
+
+function focusTree(tree: Tree) {
+  if (focusedTree !== tree) {
+    if (focusedTree) {
+      focusedTree.root.material.emissiveColor = Color3.Black();
+    }
+
+    focusedTree = tree;
+
+    if (tool === "Tree Remover") {
+      tree.root.material.emissiveColor = Color3.Red();
+    } else if (tool === "Fertilizer") {
+      tree.root.material.emissiveColor = Color3.Green();
+    } else {
+      tree.root.material.emissiveColor = Color3.Gray();
+    }
+  }
+}
+
+function blurTree(tree: Tree) {
+  if (tree === focusedTree) {
+    tree.root.material.emissiveColor = Color3.Black();
+    focusedTree = null;
+  }
+}
+
 function toggleTool(newTool: Tool) {
   if (tool !== newTool) {
     tool = newTool;
     console.log(`${newTool} selected`);
+
+    // purely visual changes
+    if (focusedTree) {
+      if (tool === "Tree Remover") {
+        focusedTree.root.material.emissiveColor = Color3.Red();
+      } else if (tool === "Fertilizer") {
+        focusedTree.root.material.emissiveColor = Color3.Green();
+      } else {
+        focusedTree.root.material.emissiveColor = Color3.Gray();
+      }
+    }
   } else {
     tool = null;
+    if (focusedTree) {
+      focusedTree.root.material.emissiveColor = Color3.Gray();
+    }
     console.log("no tool selected");
   }
 }
