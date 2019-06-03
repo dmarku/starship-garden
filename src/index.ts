@@ -52,6 +52,25 @@ const ground = MeshBuilder.CreateGround(
   scene
 );
 
+const seedIndicator = MeshBuilder.CreateCylinder(
+  "seed indicator",
+  {
+    diameterTop: 0,
+    diameterBottom: 0.5,
+    height: 1,
+    subdivisions: 1,
+    tessellation: 4
+  },
+  scene
+);
+
+seedIndicator.rotate(Vector3.Left(), Math.PI);
+seedIndicator.bakeTransformIntoVertices(Matrix.Translation(0, -0.5, 0));
+seedIndicator.visibility = 1;
+const indicatorMaterial = new StandardMaterial("indicatorMaterial", scene);
+indicatorMaterial.emissiveColor = Color3.Gray();
+seedIndicator.material = indicatorMaterial;
+
 const groundMaterial = new StandardMaterial("groundMaterial", scene);
 groundMaterial.diffuseColor = Color3.FromHexString("#edb76d");
 ground.material = groundMaterial;
@@ -59,9 +78,6 @@ ground.material = groundMaterial;
 const treeMaterial = new StandardMaterial("trunkMaterial", scene);
 treeMaterial.diffuseColor = Color3.FromHexString("#38d051");
 treeMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
-
-const handleMaterial = new StandardMaterial("handleMaterial", scene);
-handleMaterial.diffuseColor = new Color3(1, 1, 1);
 
 interface TreeOptions {
   position?: { x: number; y: number; z: number };
@@ -428,6 +444,32 @@ ground.actionManager.registerAction(
   })
 );
 
+const matchIndicatorToCursor = new ExecuteCodeAction(
+  { trigger: ActionManager.OnEveryFrameTrigger },
+  () => {
+    const result = scene.pick(
+      scene.pointerX,
+      scene.pointerY,
+      mesh => mesh === ground
+    );
+    if (result && result.hit && result.pickedPoint) {
+      seedIndicator.position.copyFrom(result.pickedPoint);
+    }
+  }
+);
+
+ground.actionManager.registerAction(
+  new ExecuteCodeAction({ trigger: ActionManager.OnPointerOverTrigger }, () => {
+    scene.actionManager.registerAction(matchIndicatorToCursor);
+  })
+);
+
+ground.actionManager.registerAction(
+  new ExecuteCodeAction({ trigger: ActionManager.OnPointerOutTrigger }, () => {
+    scene.actionManager.unregisterAction(matchIndicatorToCursor);
+  })
+);
+
 load();
 
 engine.runRenderLoop(() => {
@@ -451,12 +493,16 @@ const noToolButton = document.getElementById("select-nothing"),
   fertilizeToolButton = document.getElementById("select-fertilize"),
   removeToolButton = document.getElementById("select-remove");
 
-const toolDisplay = document.getElementById('tool-display');
+const toolDisplay = document.getElementById("tool-display");
 
-if (noToolButton) noToolButton.addEventListener("click", () => toggleTool(null));
-if ( seedToolButton) seedToolButton.addEventListener("click", () => toggleTool("Seed Placement"));
-if (fertilizeToolButton) fertilizeToolButton.addEventListener("click", () => toggleTool("Fertilizer"));
-if (removeToolButton) removeToolButton.addEventListener("click", () => toggleTool("Tree Remover"));
+if (noToolButton)
+  noToolButton.addEventListener("click", () => toggleTool(null));
+if (seedToolButton)
+  seedToolButton.addEventListener("click", () => toggleTool("Seed Placement"));
+if (fertilizeToolButton)
+  fertilizeToolButton.addEventListener("click", () => toggleTool("Fertilizer"));
+if (removeToolButton)
+  removeToolButton.addEventListener("click", () => toggleTool("Tree Remover"));
 
 interface AdsrOptions extends GainOptions {
   attack: number;
