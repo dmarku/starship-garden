@@ -79,11 +79,6 @@ const treeMaterial = new StandardMaterial("trunkMaterial", scene);
 treeMaterial.diffuseColor = Color3.FromHexString("#38d051");
 treeMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
 
-interface TreeOptions {
-  position?: { x: number; y: number; z: number };
-  size?: number;
-}
-
 interface ITree {
   root: TransformNode;
   audio: {
@@ -99,17 +94,23 @@ class TreeGraphics extends TransformNode {
   public crown: Mesh;
   public material: StandardMaterial;
 
-  constructor(name: string, scene: Scene) {
+  constructor(name: string, options: TreeParameters, scene: Scene) {
     super(name, scene);
 
-    const height = 2;
+    const height = 1;
     const crownDiameter = 2.5;
 
     this.material = treeMaterial.clone(`tree material for ${name}`);
 
     this.trunk = MeshBuilder.CreateCylinder(
       "trunk",
-      { height, diameterTop: 0.7, diameterBottom: 1.0, tessellation: 12 },
+      {
+        height,
+        diameterTop: 0.7,
+        diameterBottom: 1.0,
+        tessellation: 12,
+        updatable: true
+      },
       scene
     );
     // offset by y so that the trunk's base is centered at its local origin
@@ -127,7 +128,19 @@ class TreeGraphics extends TransformNode {
     // center = trunk height + crown radius
     this.crown.position.y = height + 0.5 * crownDiameter;
     this.crown.material = this.material;
-    this.crown.parent = this.trunk;
+    this.crown.parent = this;
+
+    this.update(options.size);
+    // this is the tree's "root" in the sense of scene hierarchy, not biology
+    this.position = options.position
+      ? new Vector3(options.position.x, options.position.y, options.position.z)
+      : Vector3.Zero();
+  }
+
+  update(size: number) {
+    this.trunk.scaling.set(0.2 * size, size, 0.2 * size);
+    this.crown.scaling.setAll(0.2 * size);
+    this.crown.position.y = size;
   }
 }
 
@@ -150,6 +163,15 @@ function getEnvelopeFrequency(size: number): number {
   return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
 }
 
+interface TreeParameters {
+  size: number;
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+}
+
 class Tree implements ITree {
   public root: TreeGraphics;
   public audio: ITree["audio"];
@@ -159,21 +181,17 @@ class Tree implements ITree {
   private envelopeFrequency: ConstantSourceNode;
 
   constructor(
-    options: TreeOptions,
+    parameters: TreeParameters,
     scene: Scene,
     ctx: AudioContext,
     output: AudioNode
   ) {
-    const size = options.size || 0.3;
+    parameters.size = parameters.size || 2;
+    this.size = parameters.size;
     ////////////////////////////////////////////////////////
     // setup graphics
 
-    const root = new TreeGraphics("tree", scene);
-
-    // this is the tree's "root" in the sense of scene hierarchy, not biology
-    root.position = options.position
-      ? new Vector3(options.position.x, options.position.y, options.position.z)
-      : Vector3.Zero();
+    const root = new TreeGraphics("tree", parameters, scene);
 
     ////////////////////////////////////////////////////////
     // setup audio
@@ -190,13 +208,13 @@ class Tree implements ITree {
     envOsc.start();
 
     this.carrierFrequency = new ConstantSourceNode(ctx, {
-      offset: getFrequency(size)
+      offset: getFrequency(this.size)
     });
     this.carrierFrequency.start();
     this.carrierFrequency.connect(carrier.frequency);
 
     this.envelopeFrequency = new ConstantSourceNode(ctx, {
-      offset: getEnvelopeFrequency(size)
+      offset: getEnvelopeFrequency(this.size)
     });
     this.envelopeFrequency.start();
     this.envelopeFrequency.connect(envOsc.frequency);
@@ -238,8 +256,12 @@ class Tree implements ITree {
     root.trunk.actionManager = actionManager;
     root.crown.actionManager = actionManager;
 
-    root.position = options.position
-      ? new Vector3(options.position.x, options.position.y, options.position.z)
+    root.position = parameters.position
+      ? new Vector3(
+          parameters.position.x,
+          parameters.position.y,
+          parameters.position.z
+        )
       : Vector3.Zero();
 
     // placeholder for audio props
@@ -250,11 +272,10 @@ class Tree implements ITree {
     };
 
     this.root = root;
-    this.size = size;
     this.audio = audio;
   }
 
-  toJson() {
+  toJson(): TreeParameters {
     return {
       position: {
         x: this.root.position.x,
@@ -268,7 +289,7 @@ class Tree implements ITree {
   grow() {
     this.size += 1;
 
-    this.root.trunk.scaling.setAll(this.size);
+    this.root.update(this.size);
     this.carrierFrequency.offset.value = getFrequency(this.size);
     this.envelopeFrequency.offset.value = getEnvelopeFrequency(this.size);
     save();
@@ -431,7 +452,7 @@ ground.actionManager.registerAction(
       if (result && result.hit) {
         trees.push(
           new Tree(
-            { position: result.pickedPoint || Vector3.Zero() },
+            { size: 1, position: result.pickedPoint || Vector3.Zero() },
             scene,
             ctx,
             master
