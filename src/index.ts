@@ -67,7 +67,7 @@ const seedIndicator = MeshBuilder.CreateCylinder(
 
 seedIndicator.rotate(Vector3.Left(), Math.PI);
 seedIndicator.bakeTransformIntoVertices(Matrix.Translation(0, -0.5, 0));
-seedIndicator.visibility = 1;
+seedIndicator.visibility = 0;
 const indicatorMaterial = new StandardMaterial("indicatorMaterial", scene);
 indicatorMaterial.emissiveColor = Color3.Gray();
 seedIndicator.material = indicatorMaterial;
@@ -346,6 +346,12 @@ function toggleTool(newTool: Tool) {
       focusedTree.root.material.emissiveColor = Color3.Gray();
     }
     console.log("no tool selected");
+  }
+
+  if (tool === "Seed Placement") {
+    seedIndicator.visibility = 1;
+  } else {
+    seedIndicator.visibility = 0;
   }
 
   if (toolDisplay) {
