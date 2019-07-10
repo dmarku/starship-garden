@@ -160,7 +160,7 @@ class Tree implements ITree {
     ////////////////////////////////////////////////////////
     // setup interaction
 
-    const actionManager = new ActionManager(scene);
+    const actionManager = root.actionManager;
     actionManager.registerAction(
       new ExecuteCodeAction(
         {
@@ -190,9 +190,6 @@ class Tree implements ITree {
         () => blurTree(this)
       )
     );
-
-    root.trunk.actionManager = actionManager;
-    root.crown.actionManager = actionManager;
 
     root.position = parameters.position
       ? new Vector3(
