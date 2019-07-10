@@ -11,9 +11,10 @@ import {
   Color4,
   TransformNode,
   ActionManager,
-  ExecuteCodeAction,
-  Mesh
+  ExecuteCodeAction
 } from "@babylonjs/core";
+import { TreeParameters } from "./ITreeParameters";
+import { NewTreeGraphics } from "./NewTreeGraphics";
 
 // cache halftones from C1 - C7
 let notes: number[] = [];
@@ -89,61 +90,6 @@ interface ITree {
   size: number;
 }
 
-class TreeGraphics extends TransformNode {
-  public trunk: Mesh;
-  public crown: Mesh;
-  public material: StandardMaterial;
-
-  constructor(name: string, options: TreeParameters, scene: Scene) {
-    super(name, scene);
-
-    const height = 1;
-    const crownDiameter = 2.5;
-
-    this.material = treeMaterial.clone(`tree material for ${name}`);
-
-    this.trunk = MeshBuilder.CreateCylinder(
-      "trunk",
-      {
-        height,
-        diameterTop: 0.7,
-        diameterBottom: 1.0,
-        tessellation: 12,
-        updatable: true
-      },
-      scene
-    );
-    // offset by y so that the trunk's base is centered at its local origin
-    this.trunk.bakeTransformIntoVertices(
-      Matrix.Translation(0, 0.5 * height, 0)
-    );
-    this.trunk.material = this.material;
-    this.trunk.parent = this;
-
-    this.crown = MeshBuilder.CreateSphere(
-      "crown",
-      { diameter: crownDiameter },
-      scene
-    );
-    // center = trunk height + crown radius
-    this.crown.position.y = height + 0.5 * crownDiameter;
-    this.crown.material = this.material;
-    this.crown.parent = this;
-
-    this.update(options.size);
-    // this is the tree's "root" in the sense of scene hierarchy, not biology
-    this.position = options.position
-      ? new Vector3(options.position.x, options.position.y, options.position.z)
-      : Vector3.Zero();
-  }
-
-  update(size: number) {
-    this.trunk.scaling.set(0.2 * size, size, 0.2 * size);
-    this.crown.scaling.setAll(0.2 * size);
-    this.crown.position.y = size;
-  }
-}
-
 function getFrequency(size: number): number {
   // let's assume reasonable scaling factors go from 0.1 to 10
   // set frequencies between 220 and 880 hertz (so that two orders of magnitude ~ two octaves)
@@ -163,17 +109,9 @@ function getEnvelopeFrequency(size: number): number {
   return (factor * 1) / 5 + ((1 - factor) * 1) / 51;
 }
 
-interface TreeParameters {
-  size: number;
-  position: {
-    x: number;
-    y: number;
-    z: number;
-  };
-}
-
 class Tree implements ITree {
-  public root: TreeGraphics;
+  //public root: TreeGraphics;
+  public root: NewTreeGraphics;
   public audio: ITree["audio"];
   public size: number;
 
@@ -191,7 +129,7 @@ class Tree implements ITree {
     ////////////////////////////////////////////////////////
     // setup graphics
 
-    const root = new TreeGraphics("tree", parameters, scene);
+    const root = new NewTreeGraphics("tree", parameters, treeMaterial, scene);
 
     ////////////////////////////////////////////////////////
     // setup audio
